@@ -54,7 +54,7 @@ async def _describe(frame: bytes) -> str:
         img = Image.open(io.BytesIO(frame))
         def _call():
             resp = client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-3.5-flash",
                 contents=["Describe what is on this screen in 1–3 concise sentences. Focus on key text, numbers, slide headings, charts.", img],
             )
             return resp.text.strip()
