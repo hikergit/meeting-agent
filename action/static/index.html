@@ -15,7 +15,17 @@
   body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; }
   header { padding: 11px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
   header h1 { font-size: 15px; font-weight: 600; }
-  .status { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  #notesBtn { margin-left: auto; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 5px 11px; font-size: 12px; cursor: pointer; }
+  #notesBtn:hover { border-color: var(--accent); }
+  #notesBtn:disabled { opacity: .5; cursor: default; }
+  .status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); margin-left: 14px; }
+  /* notes card in thread */
+  .notes-card { background: linear-gradient(180deg, rgba(99,102,241,.12), var(--surface)); border: 1px solid rgba(99,102,241,.4); border-radius: 10px; padding: 14px 16px; margin: 6px 0; }
+  .notes-card h3 { font-size: 13px; color: var(--accent); margin-bottom: 8px; }
+  .notes-card .human { font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; }
+  .notes-links { margin-top: 10px; display: flex; gap: 12px; }
+  .notes-links a { font-size: 11px; color: var(--accent); text-decoration: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 9px; }
+  .notes-links a:hover { border-color: var(--accent); }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
   .dot.on { background: var(--low); }
 
@@ -87,6 +97,7 @@
     <path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l3 3"/><circle cx="19" cy="5" r="3" fill="#6366f1" stroke="none"/>
   </svg>
   <h1>Meeting Copilot</h1>
+  <button id="notesBtn" title="Generate meeting notes">📝 Notes</button>
   <div class="status"><div class="dot" id="dot"></div><span id="status-text">connecting…</span></div>
 </header>
 
@@ -131,7 +142,32 @@ function connect() {
     else if (m.type === 'you')      { addTurn('you', '🧑', 'You', m.text); setWaiting(false); }
     else if (m.type === 'decision') { renderDecision(m.data); maybeAgentTurn(m.data); }
     else if (m.type === 'state')    renderState(m.data);
+    else if (m.type === 'notes_pending') { notesBtn.disabled = true; notesBtn.textContent = '📝 Generating…'; }
+    else if (m.type === 'notes')    renderNotes(m.data);
   };
+}
+
+const notesBtn = document.getElementById('notesBtn');
+notesBtn.addEventListener('click', () => {
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'gen_notes' }));
+});
+
+function renderNotes(d) {
+  notesBtn.disabled = false; notesBtn.textContent = '📝 Notes';
+  if (firstTurn) { thread.innerHTML = ''; firstTurn = false; }
+  const el = document.createElement('div');
+  el.className = 'turn agent'; el.style.maxWidth = '100%';
+  el.innerHTML = `<div class="who">📝</div><div style="flex:1">
+      <div class="role">Meeting notes · human recap</div>
+      <div class="notes-card">
+        <div class="human">${escapeHtml(d.human)}</div>
+        <div class="notes-links">
+          <a href="${d.detailed_url}" target="_blank">📋 Detailed notes</a>
+          <a href="${d.raw_url}" target="_blank">📜 Full transcript</a>
+        </div>
+      </div></div>`;
+  thread.appendChild(el);
+  thread.scrollTop = thread.scrollHeight;
 }
 
 // `flag` = 'high' (urgent FYI) | 'needs' (wants your reply) | ''

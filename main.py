@@ -40,7 +40,8 @@ async def main() -> None:
 
     orchestrator = Orchestrator()
     bus.subscribe("observation", orchestrator.handle_observation)
-    register(orchestrator.state, reply_handler=orchestrator.handle_user_reply)
+    register(orchestrator.state, reply_handler=orchestrator.handle_user_reply,
+                 notes_handler=orchestrator.generate_notes)
 
     tasks = [
         run_server(port=8765),

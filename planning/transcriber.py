@@ -21,6 +21,8 @@ class Transcriber:
 
         elif obs.type == "screen":
             self.state.current_screen = obs.content
+            if obs.content not in self.state.screen_log:
+                self.state.screen_log.append(obs.content)
 
         elif obs.type == "roster":
             self._handle_roster(obs)

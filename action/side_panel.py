@@ -29,6 +29,8 @@ _connections: list[WebSocket] = []
 # Set by orchestrator: called when the user types a reply in the panel.
 # Signature: (agent_said: str, user_said: str) -> agent_reply: str
 _reply_handler: Optional[Callable[[str, str], Awaitable[str]]] = None
+# Set by orchestrator: called when the user requests meeting notes. Returns dict.
+_notes_handler: Optional[Callable[[], Awaitable[dict]]] = None
 
 
 @app.get("/")
@@ -56,6 +58,14 @@ async def _handle_inbound(raw: str) -> None:
         msg = json.loads(raw)
     except Exception:
         return
+    if msg.get("type") == "gen_notes":
+        if not _notes_handler:
+            return
+        await _broadcast(json.dumps({"type": "notes_pending"}))
+        result = await _notes_handler()
+        await _broadcast(json.dumps({"type": "notes", "data": result}))
+        return
+
     if msg.get("type") != "user_reply" or not _reply_handler:
         return
     user_said = (msg.get("text") or "").strip()
@@ -98,9 +108,11 @@ async def broadcast_state(state: MeetingState) -> None:
     await _broadcast(json.dumps({"type": "state", "data": state.model_dump()}))
 
 
-def register(state: MeetingState, reply_handler: Optional[Callable] = None) -> None:
-    global _reply_handler
+def register(state: MeetingState, reply_handler: Optional[Callable] = None,
+             notes_handler: Optional[Callable] = None) -> None:
+    global _reply_handler, _notes_handler
     _reply_handler = reply_handler
+    _notes_handler = notes_handler
     from bus import bus
     bus.subscribe("decision", broadcast_decision)
 

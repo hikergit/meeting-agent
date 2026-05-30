@@ -35,6 +35,8 @@ class Orchestrator:
         self.dispatcher = Dispatcher(self.state)
         from planning.conversation import Conversation
         self.conversation = Conversation(self.state)
+        from planning.notes import Notes
+        self.notes = Notes(self.state)
 
         # Guardrails so the executor can't firehose Claude Code:
         #  - cap concurrent dispatches
@@ -86,6 +88,10 @@ class Orchestrator:
     async def handle_user_reply(self, agent_said: str, user_said: str) -> str:
         """User typed a reply in the panel → agent responds like a colleague."""
         return await self.conversation.reply(agent_said, user_said)
+
+    async def generate_notes(self) -> dict:
+        """Produce the three-tier meeting record (raw / detailed / human)."""
+        return await self.notes.generate()
 
     def _should_dispatch(self, task: str) -> bool:
         """Skip if a very similar task was already dispatched (token-overlap > 0.6)."""
