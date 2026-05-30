@@ -59,7 +59,7 @@ async def main(interval: float) -> None:
 
     orchestrator = Orchestrator()
     bus.subscribe("observation", orchestrator.handle_observation)
-    register(orchestrator.state)
+    register(orchestrator.state, reply_handler=orchestrator.handle_user_reply)
 
     logger.info("Side panel → http://localhost:8765")
     await asyncio.gather(

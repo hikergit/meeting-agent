@@ -6,45 +6,66 @@
 <title>Meeting Copilot</title>
 <style>
   :root {
-    --bg: #0f1117; --surface: #1a1d2e; --border: #2a2d3e;
+    --bg: #0f1117; --surface: #1a1d2e; --surface2: #21263a; --border: #2a2d3e;
     --text: #e2e8f0; --muted: #64748b;
+    --heard: #38bdf8; --agent: #a78bfa; --you: #34d399;
     --low: #22c55e; --medium: #f59e0b; --high: #ef4444; --accent: #6366f1;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; }
-  header { padding: 12px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  header { padding: 11px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
   header h1 { font-size: 15px; font-weight: 600; }
   .status { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
   .dot.on { background: var(--low); }
-  .main { display: flex; flex: 1; overflow: hidden; }
-  .col { flex: 1; overflow-y: auto; padding: 14px; }
+
+  /* ===== TOP: main conversation panel ===== */
+  .conversation { flex: 1 1 60%; display: flex; flex-direction: column; overflow: hidden; border-bottom: 2px solid var(--border); }
+  .panel-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); padding: 10px 20px 4px; }
+  #thread { flex: 1; overflow-y: auto; padding: 8px 20px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+  .turn { display: flex; gap: 10px; animation: fadeIn .25s ease; max-width: 90%; }
+  .turn .who { font-size: 16px; flex-shrink: 0; width: 22px; text-align: center; }
+  .turn .bubble { padding: 9px 13px; border-radius: 10px; font-size: 13.5px; line-height: 1.5; }
+  .turn .role { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 3px; opacity: .8; }
+
+  .turn.heard .bubble { background: var(--surface); border: 1px solid var(--border); }
+  .turn.heard .role { color: var(--heard); }
+  .turn.agent .bubble { background: rgba(167,139,250,.12); border: 1px solid rgba(167,139,250,.3); }
+  .turn.agent .role { color: var(--agent); }
+  .turn.agent.high .bubble { background: rgba(239,68,68,.13); border-color: rgba(239,68,68,.4); }
+  .turn.you { align-self: flex-end; flex-direction: row-reverse; }
+  .turn.you .bubble { background: rgba(52,211,153,.13); border: 1px solid rgba(52,211,153,.35); }
+  .turn.you .role { color: var(--you); text-align: right; }
+
+  /* input row */
+  .composer { display: flex; gap: 8px; padding: 10px 20px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+  .composer input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 13px; outline: none; }
+  .composer input:focus { border-color: var(--accent); }
+  .composer button { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 0 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .composer button:hover { background: #4f46e5; }
+
+  /* ===== BOTTOM: detailed view ===== */
+  .detail { flex: 1 1 40%; display: flex; overflow: hidden; }
+  .col { flex: 1; overflow-y: auto; padding: 12px 16px; }
   .col + .col { border-left: 1px solid var(--border); }
-  .col-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 12px; }
+  .col-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 10px; }
 
-  /* Decision cards */
-  .card { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--muted); border-radius: 8px; padding: 12px; margin-bottom: 10px; animation: fadeIn .3s ease; }
-  .card.low  { border-left-color: var(--low); }
-  .card.medium { border-left-color: var(--medium); }
-  .card.high { border-left-color: var(--high); }
-  .card-title { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
-  .card-body { font-size: 12px; color: #94a3b8; line-height: 1.55; }
-  .evidence { margin-top: 8px; }
-  .ev-item { font-size: 11px; color: var(--accent); background: rgba(99,102,241,.1); border-radius: 4px; padding: 3px 8px; margin-top: 3px; }
-  .card-meta { font-size: 10px; color: var(--muted); margin-top: 7px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--muted); border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+  .card.low { border-left-color: var(--low); } .card.medium { border-left-color: var(--medium); } .card.high { border-left-color: var(--high); }
+  .card-title { font-size: 12.5px; font-weight: 600; margin-bottom: 4px; }
+  .card-body { font-size: 11.5px; color: #94a3b8; line-height: 1.5; white-space: pre-wrap; }
+  .ev-item { font-size: 10.5px; color: var(--accent); background: rgba(99,102,241,.1); border-radius: 4px; padding: 3px 7px; margin-top: 4px; }
+  .card-meta { font-size: 9.5px; color: var(--muted); margin-top: 6px; }
 
-  /* State panel */
-  .section { margin-bottom: 18px; }
-  .section h3 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 7px; }
-  .pill { display: inline-block; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 2px 10px; font-size: 11px; margin: 2px; }
+  .section { margin-bottom: 14px; }
+  .section h3 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 6px; }
+  .pill { display: inline-block; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 2px 9px; font-size: 10.5px; margin: 2px; }
   .pill.online { border-color: var(--low); }
-  .screen-desc { font-size: 11px; color: #94a3b8; font-style: italic; background: var(--surface); border-radius: 5px; padding: 7px 10px; }
-  .fact { font-size: 11px; color: #94a3b8; padding: 4px 0; border-bottom: 1px solid var(--border); }
-  .fact:last-child { border-bottom: none; }
-  .question { font-size: 11px; color: #94a3b8; padding: 3px 0; }
+  .screen-desc { font-size: 10.5px; color: #94a3b8; font-style: italic; background: var(--surface); border-radius: 5px; padding: 6px 9px; }
+  .fact { font-size: 10.5px; color: #94a3b8; padding: 3px 0; border-bottom: 1px solid var(--border); }
   .empty { color: var(--muted); font-size: 12px; font-style: italic; }
-
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 </style>
 </head>
 <body>
@@ -55,99 +76,120 @@
   <h1>Meeting Copilot</h1>
   <div class="status"><div class="dot" id="dot"></div><span id="status-text">connecting…</span></div>
 </header>
-<div class="main">
-  <!-- Left: insights -->
+
+<!-- TOP: conversation -->
+<div class="conversation">
+  <div class="panel-label">Conversation — what I heard · what I'm asking · your reply</div>
+  <div id="thread"><p class="empty">Listening to the meeting…</p></div>
+  <form class="composer" id="composer" autocomplete="off">
+    <input id="reply" placeholder="Type your answer to the agent…" />
+    <button type="submit">Send</button>
+  </form>
+</div>
+
+<!-- BOTTOM: detail -->
+<div class="detail">
   <div class="col">
     <div class="col-title">Insights</div>
-    <div id="decisions"><p class="empty">Listening…</p></div>
+    <div id="decisions"><p class="empty">No insights yet.</p></div>
   </div>
-  <!-- Right: meeting state -->
   <div class="col">
     <div class="col-title">Meeting State</div>
-    <div class="section">
-      <h3>Participants</h3>
-      <div id="participants"><span class="empty">Waiting…</span></div>
-    </div>
-    <div class="section">
-      <h3>Screen</h3>
-      <div id="screen" class="screen-desc">No screen captured yet.</div>
-    </div>
-    <div class="section">
-      <h3>Open Questions</h3>
-      <div id="questions"><span class="empty">None yet.</span></div>
-    </div>
-    <div class="section">
-      <h3>Facts Asserted</h3>
-      <div id="facts"><span class="empty">None yet.</span></div>
-    </div>
+    <div class="section"><h3>Participants</h3><div id="participants"><span class="empty">Waiting…</span></div></div>
+    <div class="section"><h3>Screen</h3><div id="screen" class="screen-desc">No screen captured.</div></div>
+    <div class="section"><h3>Facts</h3><div id="facts"><span class="empty">None yet.</span></div></div>
   </div>
 </div>
 
 <script>
-const dot = document.getElementById('dot');
-const statusText = document.getElementById('status-text');
-const decisionsEl = document.getElementById('decisions');
-const participantsEl = document.getElementById('participants');
-const screenEl = document.getElementById('screen');
-const questionsEl = document.getElementById('questions');
-const factsEl = document.getElementById('facts');
-
-let ws, firstDecision = true;
+const dot = document.getElementById('dot'), statusText = document.getElementById('status-text');
+const thread = document.getElementById('thread'), decisionsEl = document.getElementById('decisions');
+const participantsEl = document.getElementById('participants'), screenEl = document.getElementById('screen'), factsEl = document.getElementById('facts');
+let ws, firstTurn = true, firstDecision = true, lastAgentText = '';
 
 function connect() {
   ws = new WebSocket(`ws://${location.host}/ws`);
-  ws.onopen = () => {
-    dot.classList.add('on');
-    statusText.textContent = 'live';
-  };
-  ws.onclose = () => {
-    dot.classList.remove('on');
-    statusText.textContent = 'reconnecting…';
-    setTimeout(connect, 2000);
-  };
+  ws.onopen = () => { dot.classList.add('on'); statusText.textContent = 'live'; };
+  ws.onclose = () => { dot.classList.remove('on'); statusText.textContent = 'reconnecting…'; setTimeout(connect, 2000); };
   ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    if (msg.type === 'decision') renderDecision(msg.data);
-    if (msg.type === 'state')    renderState(msg.data);
+    const m = JSON.parse(e.data);
+    if (m.type === 'heard')        addTurn('heard', '👂', 'Heard' + (m.speaker ? ` · ${m.speaker}` : ''), m.text);
+    else if (m.type === 'agent_reply') addTurn('agent', '🤖', 'Agent', m.text);
+    else if (m.type === 'you')      addTurn('you', '🧑', 'You', m.text);
+    else if (m.type === 'decision') { renderDecision(m.data); maybeAgentTurn(m.data); }
+    else if (m.type === 'state')    renderState(m.data);
   };
+}
+
+function addTurn(cls, who, role, text, urgency) {
+  if (firstTurn) { thread.innerHTML = ''; firstTurn = false; }
+  if (cls === 'agent') lastAgentText = text;
+  const el = document.createElement('div');
+  el.className = `turn ${cls}` + (urgency === 'high' ? ' high' : '');
+  el.innerHTML = `<div class="who">${who}</div><div><div class="role">${role}</div><div class="bubble">${escapeHtml(text)}</div></div>`;
+  thread.appendChild(el);
+  thread.scrollTop = thread.scrollHeight;
+}
+
+// Promote agent reactions (questions / high-urgency / executor) into the conversation
+function maybeAgentTurn(d) {
+  const t = (d.payload.title || '').toLowerCase();
+  const body = d.payload.body || '';
+  // Executor finished: embed the dashboard inline — no new tab.
+  const urlMatch = body.match(/\/static\/outputs\/[^\s]+\.html/);
+  if (t.startsWith('✅') && urlMatch) {
+    addDashboardTurn(d.payload.title, body.replace(/📊[^\n]*/,'').trim(), urlMatch[0]);
+    return;
+  }
+  const isConversational = t.startsWith('suggested question') || t.startsWith('🔧') || d.urgency === 'high';
+  if (isConversational) {
+    const text = d.payload.title.replace(/^(suggested question)/i, 'Quick question').trim()
+               + (body ? ` — ${body}` : '');
+    addTurn('agent', '🤖', 'Agent', text, d.urgency);
+  }
+}
+
+function addDashboardTurn(title, summary, url) {
+  if (firstTurn) { thread.innerHTML = ''; firstTurn = false; }
+  const el = document.createElement('div');
+  el.className = 'turn agent';
+  el.style.maxWidth = '100%';
+  el.innerHTML = `<div class="who">🤖</div><div style="flex:1">
+      <div class="role">Agent · result</div>
+      <div class="bubble">${escapeHtml(title)}${summary ? `<br><span style="color:#94a3b8">${escapeHtml(summary)}</span>` : ''}
+        <iframe src="${url}" style="width:100%;height:340px;border:1px solid var(--border);border-radius:8px;margin-top:8px;background:#fff"></iframe>
+        <a href="${url}" target="_blank" style="font-size:10.5px;color:var(--accent)">open full ↗</a>
+      </div></div>`;
+  thread.appendChild(el);
+  thread.scrollTop = thread.scrollHeight;
 }
 
 function renderDecision(d) {
   if (firstDecision) { decisionsEl.innerHTML = ''; firstDecision = false; }
-  const urgency = d.urgency || 'low';
-  const ev = (d.payload.evidence || []).map(e =>
-    `<div class="ev-item">📎 ${e.source}: "${e.ref}"</div>`
-  ).join('');
+  const u = d.urgency || 'low';
+  const ev = (d.payload.evidence || []).map(e => `<div class="ev-item">📎 ${e.source}: "${e.ref}"</div>`).join('');
   const card = document.createElement('div');
-  card.className = `card ${urgency}`;
-  card.innerHTML = `
-    <div class="card-title">${d.payload.title}</div>
-    <div class="card-body">${d.payload.body}</div>
-    ${ev ? `<div class="evidence">${ev}</div>` : ''}
-    <div class="card-meta">${urgency} · ${Math.round(d.confidence * 100)}% · ${new Date(d.timestamp).toLocaleTimeString()}</div>
-  `;
+  card.className = `card ${u}`;
+  card.innerHTML = `<div class="card-title">${escapeHtml(d.payload.title)}</div><div class="card-body">${escapeHtml(d.payload.body)}</div>${ev ? `<div>${ev}</div>` : ''}<div class="card-meta">${u} · ${Math.round(d.confidence*100)}%</div>`;
   decisionsEl.prepend(card);
 }
 
 function renderState(s) {
-  if (s.participants.length)
-    participantsEl.innerHTML = s.participants.map(p =>
-      `<span class="pill ${p.present ? 'online' : ''}">${p.name}</span>`
-    ).join('');
-
+  if (s.participants.length) participantsEl.innerHTML = s.participants.map(p => `<span class="pill ${p.present?'online':''}">${escapeHtml(p.name)}</span>`).join('');
   if (s.current_screen) screenEl.textContent = s.current_screen;
-
-  if (s.open_questions.length)
-    questionsEl.innerHTML = s.open_questions.slice(-6).map(q =>
-      `<div class="question">? ${q}</div>`
-    ).join('');
-
-  if (s.facts_asserted.length)
-    factsEl.innerHTML = s.facts_asserted.slice(-8).map(f =>
-      `<div class="fact"><strong>${f.by}:</strong> ${f.claim}</div>`
-    ).join('');
+  if (s.facts_asserted.length) factsEl.innerHTML = s.facts_asserted.slice(-6).map(f => `<div class="fact"><strong>${escapeHtml(f.by)}:</strong> ${escapeHtml(f.claim)}</div>`).join('');
 }
 
+document.getElementById('composer').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const input = document.getElementById('reply');
+  const text = input.value.trim();
+  if (!text || !ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({ type: 'user_reply', text, in_reply_to: lastAgentText }));
+  input.value = '';
+});
+
+function escapeHtml(s) { return (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 connect();
 </script>
 </body>

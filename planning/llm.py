@@ -48,24 +48,27 @@ def resolved_backend() -> str:
     raise RuntimeError("Set ANTHROPIC_API_KEY or GEMINI_API_KEY, or use MOCK_PLANNING=true")
 
 
-async def complete(prompt: str, system: str, tier: str = "mid") -> str:
-    """Returns raw text. Callers parse JSON themselves."""
+async def complete(prompt: str, system: str, tier: str = "mid", json_mode: bool = True) -> str:
+    """Returns raw text. Callers parse JSON themselves.
+    json_mode=False for natural prose (e.g. the conversation responder)."""
     backend = resolved_backend()
     if backend == "claude":
-        return await _claude(prompt, system, tier)
+        return await _claude(prompt, system, tier, json_mode)
     elif backend == "claude-cli":
-        return await _claude_cli(prompt, system)
+        return await _claude_cli(prompt, system, json_mode)
     elif backend == "gemini":
-        return await _gemini(prompt, system, tier)
+        return await _gemini(prompt, system, tier, json_mode)
     else:
         raise RuntimeError(f"Unknown backend: {backend}")
 
 
-async def _claude(prompt: str, system: str, tier: str) -> str:
+async def _claude(prompt: str, system: str, tier: str, json_mode: bool = True) -> str:
     import anthropic
     model = _CLAUDE[tier]
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    full_system = system + "\n\nIMPORTANT: Output only valid JSON. No markdown fences, no explanation."
+    full_system = system
+    if json_mode:
+        full_system += "\n\nIMPORTANT: Output only valid JSON. No markdown fences, no explanation."
 
     def _call():
         msg = client.messages.create(
@@ -77,13 +80,13 @@ async def _claude(prompt: str, system: str, tier: str) -> str:
         return msg.content[0].text
 
     text = await asyncio.to_thread(_call)
-    # Strip any accidental ```json ... ``` wrapping
     text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip())
     return text
 
 
-async def _claude_cli(prompt: str, system: str) -> str:
-    full = f"{system}\n\nIMPORTANT: Output only valid JSON, no markdown.\n\n{prompt}"
+async def _claude_cli(prompt: str, system: str, json_mode: bool = True) -> str:
+    instr = "Output only valid JSON, no markdown." if json_mode else "Reply with plain text only, no JSON, no markdown."
+    full = f"{system}\n\nIMPORTANT: {instr}\n\n{prompt}"
     proc = await asyncio.create_subprocess_exec(
         "claude", "-p", full,
         stdout=asyncio.subprocess.PIPE,
@@ -95,7 +98,7 @@ async def _claude_cli(prompt: str, system: str) -> str:
     return text
 
 
-async def _gemini(prompt: str, system: str, tier: str) -> str:
+async def _gemini(prompt: str, system: str, tier: str, json_mode: bool = True) -> str:
     from google import genai
     from google.genai import types
     model = _GEMINI[tier]
@@ -107,7 +110,7 @@ async def _gemini(prompt: str, system: str, tier: str) -> str:
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=system,
-                response_mime_type="application/json",
+                response_mime_type="application/json" if json_mode else "text/plain",
             ),
         )
         return resp.text

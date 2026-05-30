@@ -33,6 +33,8 @@ class Orchestrator:
         self.learner = Learner(self.state)
         self.executor = Executor(self.state)
         self.dispatcher = Dispatcher(self.state)
+        from planning.conversation import Conversation
+        self.conversation = Conversation(self.state)
 
         # Guardrails so the executor can't firehose Claude Code:
         #  - cap concurrent dispatches
@@ -57,6 +59,12 @@ class Orchestrator:
         # 1. Update state immediately (no LLM, < 1ms)
         await self.transcriber.process(obs)
 
+        # Surface exactly what the agent heard in the conversation panel.
+        if obs.type == "transcript":
+            from action.side_panel import broadcast_heard
+            sp = obs.speaker.name if obs.speaker else None
+            await broadcast_heard(sp, obs.content)
+
         # 2. Run LLM-backed agents concurrently
         thinker_d, questioner_d, action_task, _ = await asyncio.gather(
             self.thinker.triage(obs),
@@ -74,6 +82,10 @@ class Orchestrator:
             notice = Dispatcher.working_notice(action_task, obs.id)
             await self._emit(notice)
             asyncio.create_task(self._run_executor(action_task, obs.id))
+
+    async def handle_user_reply(self, agent_said: str, user_said: str) -> str:
+        """User typed a reply in the panel → agent responds like a colleague."""
+        return await self.conversation.reply(agent_said, user_said)
 
     def _should_dispatch(self, task: str) -> bool:
         """Skip if a very similar task was already dispatched (token-overlap > 0.6)."""
