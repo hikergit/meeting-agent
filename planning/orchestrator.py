@@ -34,6 +34,13 @@ class Orchestrator:
         self.executor = Executor(self.state)
         self.dispatcher = Dispatcher(self.state)
 
+        # Guardrails so the executor can't firehose Claude Code:
+        #  - cap concurrent dispatches
+        #  - skip tasks too similar to ones already running/done
+        self._exec_sem = asyncio.Semaphore(int(os.getenv("EXECUTOR_MAX_CONCURRENT", "1")))
+        self._dispatched: list[str] = []
+        self._active_tasks = 0
+
         if MOCK:
             from planning.mock_thinker import MockThinker, MockQuestioner, MockLearner
             self.thinker = MockThinker(self.state)
@@ -62,14 +69,32 @@ class Orchestrator:
             await self._emit(decision)
 
         # 3. If an actionable request was heard, dispatch to Claude Code in background
-        if action_task:
+        if action_task and self._should_dispatch(action_task):
+            self._dispatched.append(action_task)
             notice = Dispatcher.working_notice(action_task, obs.id)
             await self._emit(notice)
             asyncio.create_task(self._run_executor(action_task, obs.id))
 
+    def _should_dispatch(self, task: str) -> bool:
+        """Skip if a very similar task was already dispatched (token-overlap > 0.6)."""
+        words = set(task.lower().split())
+        for prev in self._dispatched:
+            pw = set(prev.lower().split())
+            overlap = len(words & pw) / max(len(words | pw), 1)
+            if overlap > 0.6:
+                logger.info("⏭  Skipping duplicate task: %s", task[:50])
+                return False
+        return True
+
     async def _run_executor(self, task: str, obs_id: str) -> None:
-        for decision in await self.executor.run(task, obs_id):
-            await self._emit(decision)
+        # Semaphore caps how many Claude Code dispatches run at once.
+        async with self._exec_sem:
+            self._active_tasks += 1
+            try:
+                for decision in await self.executor.run(task, obs_id):
+                    await self._emit(decision)
+            finally:
+                self._active_tasks -= 1
 
     async def _emit(self, decision: DecisionEvent) -> None:
         from bus import bus
