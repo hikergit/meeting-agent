@@ -28,9 +28,10 @@ Open http://localhost:8765. Watch the contradiction surface at obs-006/007.
 ### Option B — Live meeting
 1. Launch Chrome with remote debugging:
    ```bash
-   /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-     --remote-debugging-port=9222 \
-     --user-data-dir=/tmp/chrome-debug
+   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+     "--remote-debugging-port=9222" \
+     "--remote-allow-origins=http://localhost:9222" \
+     "--user-data-dir=/tmp/chrome-debug"
    ```
 2. Open meet.google.com, join the meeting.
 3. **Turn captions ON** (CC button, bottom of Meet).
