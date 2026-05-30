@@ -14,6 +14,7 @@ load_dotenv()
 
 from action.side_panel import broadcast_state, register, run_server
 from bus import bus
+from perception.audio_adapter import run_audio_adapter
 from perception.caption_adapter import run_caption_adapter
 from perception.screen_adapter import run_screen_adapter
 from planning.orchestrator import Orchestrator
@@ -50,6 +51,13 @@ async def main() -> None:
         tasks.append(run_screen_adapter())
     else:
         logger.info("Screen adapter disabled (ENABLE_SCREEN=false)")
+
+    # Audio adapter — automatic BACKUP that transcribes only when Meet captions
+    # are off (no names from voice). No-ops gracefully if no loopback device.
+    if os.getenv("ENABLE_AUDIO", "true").lower() == "true":
+        tasks.append(run_audio_adapter())
+    else:
+        logger.info("Audio adapter disabled (ENABLE_AUDIO=false)")
 
     logger.info("Meeting Copilot live — open http://localhost:8765")
     await asyncio.gather(*tasks)

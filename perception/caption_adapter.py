@@ -20,6 +20,7 @@ from websockets.exceptions import ConnectionClosed
 
 from bus import bus
 from contracts.observation import ObservationEvent, Speaker
+from perception import source_state
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,9 @@ _CAPTION_JS = r"""
     });
   }
 
-  return JSON.stringify(results);
+  // `on` reports whether captions are enabled (panel present) even when silent,
+  // so the audio backup knows when captions are doing the job.
+  return JSON.stringify({ on: !!container, rows: results });
 })()
 """
 
@@ -107,8 +110,13 @@ async def run_caption_adapter() -> None:
                         "params": {"expression": _CAPTION_JS, "returnByValue": True},
                     }))
                     raw = json.loads(await ws.recv())
-                    value = raw.get("result", {}).get("result", {}).get("value", "[]")
-                    lines: list[dict] = json.loads(value)
+                    value = raw.get("result", {}).get("result", {}).get("value", "{}")
+                    payload = json.loads(value)
+                    lines: list[dict] = payload.get("rows", [])
+
+                    # Tell the audio backup captions are live (even during silence).
+                    if payload.get("on"):
+                        source_state.mark_captions_on()
 
                     current = {}
                     for line in lines:

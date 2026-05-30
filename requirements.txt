@@ -8,3 +8,4 @@ python-dotenv==1.2.2
 httpx==0.28.1
 mss==10.2.0
 Pillow==12.2.0
+sounddevice==0.5.1   # audio_adapter: local audio capture for direct STT
