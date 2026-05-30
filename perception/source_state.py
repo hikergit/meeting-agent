@@ -14,6 +14,7 @@ import time
 CAPTION_GRACE = 6.0
 
 _last_caption_on: float = 0.0
+_agent_speaking_until: float = 0.0
 
 
 def mark_captions_on() -> None:
@@ -24,3 +25,13 @@ def mark_captions_on() -> None:
 
 def captions_recently_active() -> bool:
     return (time.time() - _last_caption_on) < CAPTION_GRACE
+
+
+def mark_agent_speaking(seconds: float) -> None:
+    """Called by voice output so the audio backup won't transcribe the agent itself."""
+    global _agent_speaking_until
+    _agent_speaking_until = max(_agent_speaking_until, time.time() + seconds + 1.0)
+
+
+def agent_recently_spoke() -> bool:
+    return time.time() < _agent_speaking_until

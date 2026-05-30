@@ -26,6 +26,9 @@ async def speak(text: str) -> None:
     if len(spoken) > 220:
         spoken = spoken[:217] + "..."
     async with _lock:  # serialize so utterances don't overlap
+        # Tell the audio backup to ignore its own voice (~14 chars/sec speech).
+        from perception import source_state
+        source_state.mark_agent_speaking(len(spoken) / 14.0)
         try:
             proc = await asyncio.create_subprocess_exec(
                 "say", "-v", VOICE, spoken,

@@ -128,6 +128,9 @@ async def run_audio_adapter() -> None:
             # Backup only: stay silent while captions are doing the job.
             if source_state.captions_recently_active():
                 continue
+            # Don't transcribe the agent's own TTS (prevents self-feedback loop).
+            if source_state.agent_recently_spoke():
+                continue
             if _rms(pcm) < SILENCE_RMS:
                 continue
 
