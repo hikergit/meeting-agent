@@ -7,4 +7,5 @@ __pycache__/
 venv/
 dist/
 *.egg-info/
-tmp/
+tmp/workspace/
+action/static/outputs/

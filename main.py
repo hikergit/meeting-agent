@@ -41,13 +41,18 @@ async def main() -> None:
     bus.subscribe("observation", orchestrator.handle_observation)
     register(orchestrator.state)
 
-    logger.info("Meeting Copilot live — open http://localhost:8765")
-    await asyncio.gather(
+    tasks = [
         run_server(port=8765),
         run_caption_adapter(),
-        run_screen_adapter(),
         _state_loop(orchestrator),
-    )
+    ]
+    if os.getenv("ENABLE_SCREEN", "true").lower() == "true":
+        tasks.append(run_screen_adapter())
+    else:
+        logger.info("Screen adapter disabled (ENABLE_SCREEN=false)")
+
+    logger.info("Meeting Copilot live — open http://localhost:8765")
+    await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":
