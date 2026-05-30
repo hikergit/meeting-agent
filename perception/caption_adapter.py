@@ -11,6 +11,7 @@ The JS selector is brittle to Meet DOM changes — verify/update on demo day.
 import asyncio
 import json
 import logging
+import os
 from typing import Optional
 
 import httpx
@@ -55,11 +56,12 @@ _CAPTION_JS = r"""
 
 
 async def _find_meet_tab() -> Optional[str]:
+    pattern = os.getenv("MEET_TAB_URL", "meet.google.com")
     try:
         async with httpx.AsyncClient(timeout=3) as client:
             resp = await client.get(f"{CDP_HTTP}/json")
             for tab in resp.json():
-                if "meet.google.com" in tab.get("url", ""):
+                if pattern in tab.get("url", ""):
                     return tab["webSocketDebuggerUrl"]
     except Exception as e:
         logger.debug("CDP tab lookup failed: %s", e)
