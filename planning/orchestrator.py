@@ -7,6 +7,7 @@ Sequence per observation:
 """
 import asyncio
 import logging
+import os
 
 from contracts.decision import DecisionEvent
 from contracts.meeting_state import MeetingState
@@ -20,16 +21,26 @@ from planning.transcriber import Transcriber
 
 logger = logging.getLogger(__name__)
 
+MOCK = os.getenv("MOCK_PLANNING", "false").lower() == "true"
+
 
 class Orchestrator:
     def __init__(self):
         self.state = MeetingState()
         self.transcriber = Transcriber(self.state)
-        self.thinker = Thinker(self.state)
-        self.questioner = Questioner(self.state)
         self.researcher = Researcher(self.state)
         self.learner = Learner(self.state)
         self.executor = Executor(self.state)
+
+        if MOCK:
+            from planning.mock_thinker import MockThinker, MockQuestioner, MockLearner
+            self.thinker = MockThinker(self.state)
+            self.questioner = MockQuestioner(self.state)
+            self.learner = MockLearner(self.state)
+            logger.info("🟡 Mock planning mode — no API calls")
+        else:
+            self.thinker = Thinker(self.state)
+            self.questioner = Questioner(self.state)
 
     async def handle_observation(self, obs: ObservationEvent) -> None:
         from bus import bus

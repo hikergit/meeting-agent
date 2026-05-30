@@ -32,8 +32,9 @@ async def _state_loop(orchestrator: Orchestrator) -> None:
 
 
 async def main() -> None:
-    if not os.environ.get("GEMINI_API_KEY"):
-        raise RuntimeError("GEMINI_API_KEY not set — copy .env.example to .env and fill it in")
+    mock = os.getenv("MOCK_PLANNING", "false").lower() == "true"
+    if not mock and not os.environ.get("GEMINI_API_KEY"):
+        raise RuntimeError("GEMINI_API_KEY not set — copy .env.example to .env, or run with MOCK_PLANNING=true")
 
     orchestrator = Orchestrator()
     bus.subscribe("observation", orchestrator.handle_observation)

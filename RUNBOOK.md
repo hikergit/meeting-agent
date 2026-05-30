@@ -12,7 +12,7 @@
   - System Settings → Privacy & Security → Screen Recording
 - [ ] macOS: grant **Screen Recording** to Chrome (same path)
 - [ ] `pip install -r requirements.txt`
-- [ ] `python replay.py` → open http://localhost:8765 → confirm side panel loads
+- [ ] `python3.11 replay.py` → open http://localhost:8765 → confirm side panel loads
 - [ ] Confirm the contradiction fires: obs-006/007 (30% QoQ) should trigger a Thinker alert citing `Q1_planning.md` (12%)
 
 ---
@@ -21,7 +21,7 @@
 
 ### Option A — Replay (no live meeting required, safe fallback)
 ```bash
-python replay.py --interval 2
+python3.11 replay.py --interval 2
 ```
 Open http://localhost:8765. Watch the contradiction surface at obs-006/007.
 
@@ -35,7 +35,7 @@ Open http://localhost:8765. Watch the contradiction surface at obs-006/007.
 2. Open meet.google.com, join the meeting.
 3. **Turn captions ON** (CC button, bottom of Meet).
 4. ```bash
-   python main.py
+   python3.11 main.py
    ```
 5. Open http://localhost:8765.
 
