@@ -18,7 +18,7 @@ from contracts.observation import ObservationEvent
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-2.5-pro"
 DOCS_DIR = Path(__file__).parent / "agent_config" / "sample_docs"
 
 _SYSTEM = """You are the Thinker — the quiet reasoning core of a meeting copilot.

@@ -19,7 +19,7 @@ from contracts.observation import ObservationEvent
 logger = logging.getLogger(__name__)
 
 CAPTURE_INTERVAL = float(os.getenv("SCREEN_INTERVAL", "1.5"))
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-2.0-flash"  # vision, runs every ~1.5s — keep fast
 MAX_DIM = 1024  # resize before sending; saves tokens
 
 
