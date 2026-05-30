@@ -9,3 +9,5 @@ dist/
 *.egg-info/
 tmp/workspace/
 action/static/outputs/
+**/tmp/
+*gemini_info*
