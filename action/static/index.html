@@ -38,6 +38,19 @@
   .turn.you .bubble { background: rgba(52,211,153,.13); border: 1px solid rgba(52,211,153,.35); }
   .turn.you .role { color: var(--you); text-align: right; }
 
+  /* agent turn that needs the user's input */
+  .turn.needs-input .bubble { border-color: var(--medium); box-shadow: 0 0 0 1px var(--medium), 0 0 14px rgba(245,158,11,.35); animation: pulse 1.6s ease-in-out infinite; }
+  .needs-badge { display: inline-block; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #0f1117; background: var(--medium); border-radius: 4px; padding: 1px 6px; margin-left: 8px; vertical-align: middle; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 1px var(--medium), 0 0 8px rgba(245,158,11,.25);} 50% { box-shadow: 0 0 0 1px var(--medium), 0 0 18px rgba(245,158,11,.55);} }
+  /* composer waiting state */
+  .composer.waiting input { border-color: var(--medium); box-shadow: 0 0 12px rgba(245,158,11,.4); }
+  .composer.waiting::before { content: "✋ Agent is waiting for your reply"; position: absolute; top: -22px; left: 20px; font-size: 11px; color: var(--medium); font-weight: 600; }
+  .composer { position: relative; }
+  /* header attention */
+  .status.attention { color: var(--medium); font-weight: 700; }
+  .dot.attention { background: var(--medium); animation: pulse2 1s infinite; }
+  @keyframes pulse2 { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
   /* input row */
   .composer { display: flex; gap: 8px; padding: 10px 20px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
   .composer input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 13px; outline: none; }
@@ -114,21 +127,36 @@ function connect() {
   ws.onmessage = (e) => {
     const m = JSON.parse(e.data);
     if (m.type === 'heard')        addTurn('heard', '👂', 'Heard' + (m.speaker ? ` · ${m.speaker}` : ''), m.text);
-    else if (m.type === 'agent_reply') addTurn('agent', '🤖', 'Agent', m.text);
-    else if (m.type === 'you')      addTurn('you', '🧑', 'You', m.text);
+    else if (m.type === 'agent_reply') addTurn('agent', '🤖', 'Agent', m.text, m.text.trim().endsWith('?') ? 'needs' : '');
+    else if (m.type === 'you')      { addTurn('you', '🧑', 'You', m.text); setWaiting(false); }
     else if (m.type === 'decision') { renderDecision(m.data); maybeAgentTurn(m.data); }
     else if (m.type === 'state')    renderState(m.data);
   };
 }
 
-function addTurn(cls, who, role, text, urgency) {
+// `flag` = 'high' (urgent FYI) | 'needs' (wants your reply) | ''
+function addTurn(cls, who, role, text, flag) {
   if (firstTurn) { thread.innerHTML = ''; firstTurn = false; }
   if (cls === 'agent') lastAgentText = text;
+  const needs = flag === 'needs';
   const el = document.createElement('div');
-  el.className = `turn ${cls}` + (urgency === 'high' ? ' high' : '');
-  el.innerHTML = `<div class="who">${who}</div><div><div class="role">${role}</div><div class="bubble">${escapeHtml(text)}</div></div>`;
+  el.className = `turn ${cls}` + (flag === 'high' ? ' high' : '') + (needs ? ' needs-input' : '');
+  const badge = needs ? '<span class="needs-badge">needs you</span>' : '';
+  el.innerHTML = `<div class="who">${who}</div><div><div class="role">${role}${badge}</div><div class="bubble">${escapeHtml(text)}</div></div>`;
   thread.appendChild(el);
   thread.scrollTop = thread.scrollHeight;
+  if (needs) setWaiting(true);
+}
+
+function setWaiting(on) {
+  const composer = document.getElementById('composer');
+  const input = document.getElementById('reply');
+  composer.classList.toggle('waiting', on);
+  dot.classList.toggle('attention', on);
+  document.querySelector('.status').classList.toggle('attention', on);
+  statusText.textContent = on ? 'needs you' : 'live';
+  document.title = on ? '✋ Meeting Copilot — needs you' : 'Meeting Copilot';
+  if (on) input.focus();
 }
 
 // Promote agent reactions (questions / high-urgency / executor) into the conversation
@@ -141,11 +169,13 @@ function maybeAgentTurn(d) {
     addDashboardTurn(d.payload.title, body.replace(/📊[^\n]*/,'').trim(), urlMatch[0]);
     return;
   }
-  const isConversational = t.startsWith('suggested question') || t.startsWith('🔧') || d.urgency === 'high';
+  const isQuestion = t.startsWith('suggested question');
+  const isConversational = isQuestion || t.startsWith('🔧') || d.urgency === 'high';
   if (isConversational) {
     const text = d.payload.title.replace(/^(suggested question)/i, 'Quick question').trim()
                + (body ? ` — ${body}` : '');
-    addTurn('agent', '🤖', 'Agent', text, d.urgency);
+    const flag = isQuestion ? 'needs' : (d.urgency === 'high' ? 'high' : '');
+    addTurn('agent', '🤖', 'Agent', text, flag);
   }
 }
 

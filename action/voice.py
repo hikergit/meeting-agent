@@ -12,7 +12,8 @@ import shutil
 
 logger = logging.getLogger(__name__)
 
-ENABLED = os.getenv("ENABLE_VOICE", "true").lower() == "true" and bool(shutil.which("say"))
+# Visual-only by default (avoids meeting echo). Set ENABLE_VOICE=true to speak aloud.
+ENABLED = os.getenv("ENABLE_VOICE", "false").lower() == "true" and bool(shutil.which("say"))
 VOICE = os.getenv("VOICE_NAME", "Samantha")
 
 _lock = asyncio.Lock()
