@@ -15,7 +15,7 @@ from contracts.observation import ObservationEvent
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_MODEL = "gemini-2.5-flash"
 
 _SYSTEM = """You extract concrete, verifiable facts from meeting transcript lines.
 A fact is a specific number, commitment, deadline, or decision — not an opinion or question.

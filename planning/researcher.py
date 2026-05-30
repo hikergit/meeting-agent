@@ -16,7 +16,7 @@ from contracts.meeting_state import MeetingState
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_MODEL = "gemini-2.5-flash"
 
 _SYSTEM = """You are the Researcher — you verify factual claims made in meetings.
 
