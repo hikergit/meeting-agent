@@ -17,6 +17,7 @@ from bus import bus
 from perception.caption_adapter import run_caption_adapter
 from perception.screen_adapter import run_screen_adapter
 from planning.orchestrator import Orchestrator
+from planning.llm import log_backend
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,8 +34,8 @@ async def _state_loop(orchestrator: Orchestrator) -> None:
 
 async def main() -> None:
     mock = os.getenv("MOCK_PLANNING", "false").lower() == "true"
-    if not mock and not os.environ.get("GEMINI_API_KEY"):
-        raise RuntimeError("GEMINI_API_KEY not set — copy .env.example to .env, or run with MOCK_PLANNING=true")
+    if not mock:
+        log_backend()
 
     orchestrator = Orchestrator()
     bus.subscribe("observation", orchestrator.handle_observation)
