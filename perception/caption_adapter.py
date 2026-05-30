@@ -86,7 +86,10 @@ async def run_caption_adapter() -> None:
                     continue
                 logger.info("Caption adapter connected to Meet tab")
 
-            async with websockets.connect(ws_url) as ws:
+            async with websockets.connect(
+                ws_url,
+                additional_headers={"Origin": "http://localhost:9222"}
+            ) as ws:
                 while True:
                     msg_id += 1
                     await ws.send(json.dumps({
