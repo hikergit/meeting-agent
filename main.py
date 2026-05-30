@@ -12,8 +12,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-import google.generativeai as genai
-
 from action.side_panel import broadcast_state, register, run_server
 from bus import bus
 from perception.caption_adapter import run_caption_adapter
@@ -34,10 +32,8 @@ async def _state_loop(orchestrator: Orchestrator) -> None:
 
 
 async def main() -> None:
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
+    if not os.environ.get("GEMINI_API_KEY"):
         raise RuntimeError("GEMINI_API_KEY not set — copy .env.example to .env and fill it in")
-    genai.configure(api_key=api_key)
 
     orchestrator = Orchestrator()
     bus.subscribe("observation", orchestrator.handle_observation)
