@@ -12,6 +12,7 @@ import os
 from contracts.decision import DecisionEvent
 from contracts.meeting_state import MeetingState
 from contracts.observation import ObservationEvent
+from planning.dispatcher import Dispatcher
 from planning.executor import Executor
 from planning.learner import Learner
 from planning.questioner import Questioner
@@ -31,6 +32,7 @@ class Orchestrator:
         self.researcher = Researcher(self.state)
         self.learner = Learner(self.state)
         self.executor = Executor(self.state)
+        self.dispatcher = Dispatcher(self.state)
 
         if MOCK:
             from planning.mock_thinker import MockThinker, MockQuestioner, MockLearner
@@ -49,17 +51,34 @@ class Orchestrator:
         await self.transcriber.process(obs)
 
         # 2. Run LLM-backed agents concurrently
-        thinker_d, questioner_d, _ = await asyncio.gather(
+        thinker_d, questioner_d, action_task, _ = await asyncio.gather(
             self.thinker.triage(obs),
             self.questioner.process(obs),
+            self.dispatcher.detect(obs) if not MOCK else _none(),
             self.learner.process(obs),
         )
 
         for decision in [*thinker_d, *questioner_d]:
-            await bus.publish("decision", decision)
-            logger.info(
-                "▶ Decision [%s] %.0f%% — %s",
-                decision.urgency,
-                decision.confidence * 100,
-                decision.payload.title,
-            )
+            await self._emit(decision)
+
+        # 3. If an actionable request was heard, dispatch to Claude Code in background
+        if action_task:
+            notice = Dispatcher.working_notice(action_task, obs.id)
+            await self._emit(notice)
+            asyncio.create_task(self._run_executor(action_task, obs.id))
+
+    async def _run_executor(self, task: str, obs_id: str) -> None:
+        for decision in await self.executor.run(task, obs_id):
+            await self._emit(decision)
+
+    async def _emit(self, decision: DecisionEvent) -> None:
+        from bus import bus
+        await bus.publish("decision", decision)
+        logger.info(
+            "▶ Decision [%s] %.0f%% — %s",
+            decision.urgency, decision.confidence * 100, decision.payload.title,
+        )
+
+
+async def _none():
+    return None

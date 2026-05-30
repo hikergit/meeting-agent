@@ -33,20 +33,20 @@ _CAPTION_JS = r"""
 (function () {
   const results = [];
 
-  // Strategy 1: data-participant-id containers (Meet 2024+)
-  document.querySelectorAll('[data-participant-id]').forEach(p => {
-    const text = p.querySelector('[jsname="YSxPC"], [data-message-text]');
-    const name = p.querySelector('[data-self-name], [jsname="r4nke"]');
-    if (text?.textContent?.trim()) {
-      results.push({ name: name?.textContent?.trim() || null, text: text.textContent.trim() });
-    }
-  });
-
-  // Strategy 2: aria-live region (fallback)
-  if (!results.length) {
-    document.querySelectorAll('[aria-live="polite"] span, [aria-live="assertive"] span').forEach(el => {
-      const t = el.textContent.trim();
-      if (t.length > 4) results.push({ name: null, text: t });
+  // Verified against live Meet DOM (May 2026):
+  //   [aria-label="Captions"]  → caption container
+  //     .nMcdL                 → one row per speaker turn
+  //       .NWpY1d / .adE6rb    → speaker name
+  //       .ygicle / .VbkSUe    → spoken text
+  const container = document.querySelector('[aria-label="Captions"]');
+  if (container) {
+    container.querySelectorAll('.nMcdL').forEach(row => {
+      const nameEl = row.querySelector('.NWpY1d') || row.querySelector('.adE6rb');
+      const textEl = row.querySelector('.ygicle') || row.querySelector('.VbkSUe');
+      const text = textEl?.textContent?.trim();
+      let name = nameEl?.textContent?.trim() || null;
+      if (name === 'You') name = '__SELF__';  // resolve to real name downstream
+      if (text) results.push({ name, text });
     });
   }
 
@@ -69,9 +69,16 @@ async def _find_meet_tab() -> Optional[str]:
 
 
 async def run_caption_adapter() -> None:
-    seen: set[str] = set()
     ws_url: Optional[str] = None
     msg_id = 0
+    self_name = os.getenv("SELF_NAME", "Me")
+
+    # Meet captions grow incrementally per speaker turn. We track the latest text
+    # per speaker and only EMIT a line once it has stopped changing for
+    # STABLE_TICKS polls (i.e. the speaker finished that utterance).
+    STABLE_TICKS = 3
+    pending: dict[str, dict] = {}   # name -> {"text": str, "stable": int}
+    emitted: set[str] = set()
 
     logger.info("Caption adapter: waiting for Meet tab on CDP :9222")
 
@@ -103,22 +110,35 @@ async def run_caption_adapter() -> None:
                     value = raw.get("result", {}).get("result", {}).get("value", "[]")
                     lines: list[dict] = json.loads(value)
 
+                    current = {}
                     for line in lines:
-                        key = f"{line.get('name')}||{line.get('text')}"
-                        if key not in seen:
-                            seen.add(key)
+                        name = line.get("name") or "unknown"
+                        if name == "__SELF__":
+                            name = self_name
+                        current[name] = line["text"]
+
+                    # Advance stability counters
+                    for name, text in current.items():
+                        p = pending.get(name)
+                        if p and p["text"] == text:
+                            p["stable"] += 1
+                        else:
+                            pending[name] = {"text": text, "stable": 0}
+
+                    # Emit lines that have stabilized and not yet been emitted
+                    for name, p in list(pending.items()):
+                        key = f"{name}||{p['text']}"
+                        if p["stable"] >= STABLE_TICKS and key not in emitted and p["text"]:
+                            emitted.add(key)
                             obs = ObservationEvent(
                                 type="transcript",
                                 source="caption_adapter",
-                                speaker=Speaker(
-                                    id=line.get("name") or "unknown",
-                                    name=line.get("name"),
-                                ),
-                                content=line["text"],
-                                raw=line,
+                                speaker=Speaker(id=name, name=name),
+                                content=p["text"],
+                                raw={"name": name},
                             )
                             await bus.publish("observation", obs)
-                            logger.debug("📝 %s: %s", line.get("name", "?"), line["text"][:60])
+                            logger.info("📝 %s: %s", name, p["text"][:70])
 
                     await asyncio.sleep(POLL_INTERVAL)
 
