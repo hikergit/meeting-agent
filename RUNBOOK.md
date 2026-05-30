@@ -6,13 +6,13 @@
 
 ## Pre-demo checklist (do before 7:45pm)
 
+- [ ] `python3.11 -m venv .venv && source .venv/bin/activate`
+- [ ] `pip install -r requirements.txt`
 - [ ] `cp .env.example .env` and fill in `GEMINI_API_KEY`
-- [ ] Confirm `GEMINI_MODEL` string with Google mentor (don't guess)
 - [ ] macOS: grant **Screen Recording** permission to Terminal/iTerm
   - System Settings → Privacy & Security → Screen Recording
 - [ ] macOS: grant **Screen Recording** to Chrome (same path)
-- [ ] `pip install -r requirements.txt`
-- [ ] `python3.11 replay.py` → open http://localhost:8765 → confirm side panel loads
+- [ ] `python replay.py` → open http://localhost:8765 → confirm side panel loads
 - [ ] Confirm the contradiction fires: obs-006/007 (30% QoQ) should trigger a Thinker alert citing `Q1_planning.md` (12%)
 
 ---

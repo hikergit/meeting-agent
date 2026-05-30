@@ -7,21 +7,32 @@ AI agent that watches your meeting and privately surfaces contradictions, gaps, 
 ## Quick start
 
 ```bash
-cp .env.example .env   # add GEMINI_API_KEY
+python3.11 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env   # add GEMINI_API_KEY (or ANTHROPIC_API_KEY)
 python replay.py       # open http://localhost:8765
 ```
+
+No API key? `MOCK_PLANNING=true python replay.py` runs the full pipeline with rule-based decisions.
 
 ## Live mode
 
 ```bash
+source .venv/bin/activate
+
 # Launch Chrome with debugging
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  "--remote-debugging-port=9222" \
+  "--remote-allow-origins=http://localhost:9222"
 
 # Start the agent
 python main.py
 ```
 Turn captions ON in Meet. Open http://localhost:8765.
+
+## Model backends
+
+Set `PLANNING_BACKEND` in `.env`: `gemini` (default), `claude` (Anthropic key), `claude-cli` (local Claude Code, no key), or `MOCK_PLANNING=true`.
 
 ## Structure
 
