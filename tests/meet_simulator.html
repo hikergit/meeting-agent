@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head><title>Meet Caption Simulator</title>
+<style>
+  body { font-family: sans-serif; background: #202124; color: #fff; padding: 20px; }
+  button { margin: 6px; padding: 10px 18px; background: #1a73e8; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+  #log { margin-top: 20px; font-size: 12px; color: #9aa0a6; }
+  /* Mimic Meet's caption DOM structure — caption_adapter.py targets these attributes */
+  #captions { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); width: 600px; }
+  .caption-line { background: rgba(0,0,0,0.7); border-radius: 4px; padding: 8px 12px; margin: 4px 0; }
+  [data-participant-id] { display: block; }
+  [jsname="r4nke"] { font-weight: bold; color: #8ab4f8; font-size: 13px; }
+  [jsname="YSxPC"] { font-size: 15px; }
+</style>
+</head>
+<body>
+<h2>Meet Caption Simulator</h2>
+<p>Simulates Google Meet's caption DOM for testing <code>caption_adapter.py</code></p>
+
+<button onclick="addLine('Alice Chen', 'Our Q1 growth was strong across all segments.')">Alice: Q1 growth</button>
+<button onclick="addLine('Bob Kim', 'We hit 30 percent quarter-over-quarter growth, exceeding our 15 percent target.')">Bob: 30% growth ⚡</button>
+<button onclick="addLine('Alice Chen', 'Engineering added 8 new hires in Q1, ahead of the plan.')">Alice: 8 hires</button>
+<button onclick="addLine('Bob Kim', 'The v3.0 engine should ship by end of May.')">Bob: v3.0 date</button>
+<button onclick="addLine('Alice Chen', 'Churn rate improved from 4.1 to 3.2 percent this quarter.')">Alice: churn</button>
+<button onclick="clearCaptions()">Clear</button>
+
+<div id="captions"></div>
+<div id="log"></div>
+
+<script>
+let lineCount = 0;
+
+function addLine(speaker, text) {
+  const el = document.createElement('div');
+  el.className = 'caption-line';
+  el.setAttribute('data-participant-id', 'p-' + speaker.replace(' ','-').toLowerCase());
+  el.innerHTML = `
+    <span jsname="r4nke">${speaker}</span>
+    <span jsname="YSxPC">${text}</span>
+  `;
+  document.getElementById('captions').appendChild(el);
+  lineCount++;
+  document.getElementById('log').textContent = `Lines in DOM: ${lineCount}`;
+
+  // Auto-remove after 8s to simulate Meet's rolling captions
+  setTimeout(() => el.remove(), 8000);
+}
+
+function clearCaptions() {
+  document.getElementById('captions').innerHTML = '';
+  lineCount = 0;
+  document.getElementById('log').textContent = 'Cleared';
+}
+</script>
+</body>
+</html>
