@@ -34,7 +34,12 @@ class Executor:
         WORKSPACE.mkdir(exist_ok=True)
         OUTPUTS.mkdir(parents=True, exist_ok=True)
 
-    async def run(self, task: str, trigger_obs_id: str) -> list[DecisionEvent]:
+    async def run(
+        self,
+        task: str,
+        trigger_obs_id: str,
+        task_type: str | None = None,  # accepted for interface parity with ManagedExecutor; unused
+    ) -> list[DecisionEvent]:
         """Dispatch a task to local Claude Code. Returns the result decision(s)."""
         slug = "".join(c if c.isalnum() else "-" for c in task.lower())[:40].strip("-")
         out_name = f"{slug or 'task'}.html"
