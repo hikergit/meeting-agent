@@ -52,7 +52,9 @@ class Thinker:
         try:
             text = await complete(prompt, _SYSTEM, tier="smart")
             result = json.loads(text)
-            if not result.get("should_surface"):
+            if isinstance(result, list):          # model occasionally wraps in an array
+                result = result[0] if result else {}
+            if not isinstance(result, dict) or not result.get("should_surface"):
                 return []
             return [DecisionEvent(
                 trigger_observation_ids=[obs.id],

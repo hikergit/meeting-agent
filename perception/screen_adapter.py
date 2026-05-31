@@ -59,11 +59,13 @@ async def _find_meet_ws() -> Optional[str]:
 async def _capture_cdp(ws) -> Optional[bytes]:
     await ws.send(json.dumps({"id": 99, "method": "Page.captureScreenshot",
                               "params": {"format": "jpeg", "quality": 60}}))
-    while True:
-        r = json.loads(await ws.recv())
-        if r.get("id") == 99:
-            data = r.get("result", {}).get("data")
-            return base64.b64decode(data) if data else None
+    # Bounded read: skip CDP event notifications, wait for our id=99 reply.
+    async with asyncio.timeout(15):
+        while True:
+            r = json.loads(await ws.recv())
+            if r.get("id") == 99:
+                data = r.get("result", {}).get("data")
+                return base64.b64decode(data) if data else None
 
 
 # ---- vision ----------------------------------------------------------------
@@ -118,11 +120,14 @@ async def run_screen_adapter() -> None:
                 await ws.recv()
                 logger.info("Screen adapter capturing Meet tab via CDP")
                 while True:
-                    frame = await _capture_cdp(ws)
-                    if frame:
-                        desc = await _describe(frame)
-                        if desc and "no shared content" not in desc.lower():
-                            last = await _emit(desc, last)
+                    try:
+                        frame = await _capture_cdp(ws)
+                        if frame:
+                            desc = await asyncio.wait_for(_describe(frame), timeout=20)
+                            if desc and "no shared content" not in desc.lower():
+                                last = await _emit(desc, last)
+                    except asyncio.TimeoutError:
+                        logger.warning("Screen capture/describe timed out — continuing")
                     await asyncio.sleep(CAPTURE_INTERVAL)
         except (websockets.exceptions.ConnectionClosed, OSError) as e:
             logger.warning("Screen adapter CDP lost: %s — reconnecting", e)
