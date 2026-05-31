@@ -4,34 +4,24 @@ Sequence per observation:
   1. Transcriber (sync state update, no LLM)
   2. Learner + Thinker + Questioner + Dispatcher (concurrent LLM calls)
   3. Publish any decisions to the bus
-  4. If dispatcher detects actionable: maybe-supersede an in-flight task,
-     otherwise spawn a new background executor task.
+  4. If the dispatcher detects an actionable request, spawn a background
+     executor task (de-duped) whose progress shows in the Tasks panel.
 
-Executor selection (PLANNING_BACKEND):
-  - "gemini" → ManagedExecutor (Gemini Managed Agents, remote Linux sandboxes,
-    truly parallel because each task forks its own sandbox).
-  - anything else → local Claude Code Executor.
+Executor selection (EXECUTOR_BACKEND, decoupled from PLANNING_BACKEND):
+  - "managed" → ManagedExecutor (Gemini Managed Agents, remote Linux sandboxes).
+  - anything else → local Claude Code Executor (default, verified).
   - MOCK_PLANNING=true → no executor; dispatcher disabled.
-
-Semantic dedup:
-  When two transcript lines mean similar things ("research ramen" → "actually
-  top ramen in Tokyo" → "make that Shibuya area"), we want the agent to do the
-  LATEST intent only. A cheap LLM call decides if the new request is a
-  refinement of an active in-flight one; if yes, the old task is marked
-  superseded (its result is dropped when it returns) and the new request runs.
 """
 import asyncio
-import json
 import logging
 import os
 
-from contracts.decision import DecisionEvent, DecisionPayload
+from contracts.decision import DecisionEvent
 from contracts.meeting_state import MeetingState
 from contracts.observation import ObservationEvent
 from planning.dispatcher import Dispatcher
 from planning.executor import Executor
 from planning.learner import Learner
-from planning.llm import complete
 from planning.questioner import Questioner
 from planning.researcher import Researcher
 from planning.thinker import Thinker
