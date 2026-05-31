@@ -60,6 +60,6 @@ Layers talk only through the bus, so any piece swaps without touching the rest.
 
 Left: the agent's private side panel. Right: the real Google Meet it's watching.
 It heard the trip discussion, **asked a clarifying question** ("June 27 dates or the
-slide's dates?"), and **dispatched research tasks to Claude Code** — all live.
+slide's dates?"), and **dispatched research tasks to Gemini** — all live.
 
 ![Meeting Copilot live demo](demo.png)
