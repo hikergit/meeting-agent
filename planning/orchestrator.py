@@ -23,16 +23,29 @@ from planning.transcriber import Transcriber
 logger = logging.getLogger(__name__)
 
 MOCK = os.getenv("MOCK_PLANNING", "false").lower() == "true"
+# Executor backend is DECOUPLED from PLANNING_BACKEND so the verified local
+# Claude Code path stays the default even when planning runs on Gemini.
+#   "claude"  → local Claude Code subprocess (default, verified)
+#   "managed" → Gemini Managed Agents (remote Linux sandboxes)
+EXECUTOR_BACKEND = os.getenv("EXECUTOR_BACKEND", "claude").lower()
 
 
 class Orchestrator:
-    def __init__(self):
+    def __init__(self, managed_agent_ids: dict | None = None):
         self.state = MeetingState()
         self.transcriber = Transcriber(self.state)
         self.researcher = Researcher(self.state)
         self.learner = Learner(self.state)
-        self.executor = Executor(self.state)
         self.dispatcher = Dispatcher(self.state)
+
+        # Executor backend selection (user-configurable, default = local Claude Code).
+        if EXECUTOR_BACKEND == "managed" and managed_agent_ids:
+            from planning.managed_executor import ManagedExecutor
+            self.executor = ManagedExecutor(self.state, managed_agent_ids)
+            logger.info("🌐 Executor: Gemini Managed Agents (remote sandboxes)")
+        else:
+            self.executor = Executor(self.state)
+            logger.info("💻 Executor: local Claude Code subprocess")
         from planning.conversation import Conversation
         self.conversation = Conversation(self.state)
         from planning.notes import Notes
@@ -68,7 +81,7 @@ class Orchestrator:
             await broadcast_heard(sp, obs.content)
 
         # 2. Run LLM-backed agents concurrently
-        thinker_d, questioner_d, action_task, _ = await asyncio.gather(
+        thinker_d, questioner_d, action_req, _ = await asyncio.gather(
             self.thinker.triage(obs),
             self.questioner.process(obs),
             self.dispatcher.detect(obs) if not MOCK else _none(),
@@ -78,11 +91,11 @@ class Orchestrator:
         for decision in [*thinker_d, *questioner_d]:
             await self._emit(decision)
 
-        # 3. If an actionable request was heard, dispatch to Claude Code in background.
+        # 3. If an actionable request was heard, dispatch to the executor in background.
         #    Goes to the dedicated Tasks panel (with progress), NOT the scrolling chat.
-        if action_task and self._should_dispatch(action_task):
-            self._dispatched.append(action_task)
-            asyncio.create_task(self._run_executor(action_task, obs.id))
+        if action_req and self._should_dispatch(action_req.task):
+            self._dispatched.append(action_req.task)
+            asyncio.create_task(self._run_executor(action_req, obs.id))
 
     async def handle_user_reply(self, agent_said: str, user_said: str) -> str:
         """User typed a reply in the panel → agent responds like a colleague."""
@@ -103,17 +116,18 @@ class Orchestrator:
                 return False
         return True
 
-    async def _run_executor(self, task: str, obs_id: str) -> None:
+    async def _run_executor(self, req, obs_id: str) -> None:
         import re
         from action.side_panel import broadcast_task_started, broadcast_task_done
+        task, task_type = req.task, req.task_type
         task_id = obs_id
         # Announce immediately so the Tasks panel shows progress right away.
         await broadcast_task_started(task_id, task)
-        # Semaphore caps how many Claude Code dispatches run at once.
+        # Semaphore caps how many executor dispatches run at once.
         async with self._exec_sem:
             self._active_tasks += 1
             try:
-                decisions = await self.executor.run(task, obs_id)
+                decisions = await self.executor.run(task, obs_id, task_type=task_type)
                 # Pull the dashboard URL + summary out of the result for the Tasks panel.
                 url, summary = None, ""
                 for d in decisions:

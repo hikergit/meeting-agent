@@ -38,7 +38,14 @@ async def main() -> None:
     if not mock:
         log_backend()
 
-    orchestrator = Orchestrator()
+    # If the user chose the Gemini Managed Agents executor, pre-create the
+    # specialist agents on Google's side. Default ("claude") skips this.
+    managed_ids = None
+    if os.getenv("EXECUTOR_BACKEND", "claude").lower() == "managed":
+        from planning.managed_agents import ensure_specialists
+        managed_ids = await ensure_specialists()
+
+    orchestrator = Orchestrator(managed_agent_ids=managed_ids)
     bus.subscribe("observation", orchestrator.handle_observation)
     register(orchestrator.state, reply_handler=orchestrator.handle_user_reply,
                  notes_handler=orchestrator.generate_notes)

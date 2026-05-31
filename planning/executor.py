@@ -34,8 +34,10 @@ class Executor:
         WORKSPACE.mkdir(exist_ok=True)
         OUTPUTS.mkdir(parents=True, exist_ok=True)
 
-    async def run(self, task: str, trigger_obs_id: str) -> list[DecisionEvent]:
-        """Dispatch a task to local Claude Code. Returns the result decision(s)."""
+    async def run(self, task: str, trigger_obs_id: str, task_type: str = "generic") -> list[DecisionEvent]:
+        """Dispatch a task to local Claude Code. Returns the result decision(s).
+        task_type is accepted for interface parity with ManagedExecutor; Claude Code
+        handles any task uniformly so it's informational only."""
         slug = "".join(c if c.isalnum() else "-" for c in task.lower())[:40].strip("-")
         out_name = f"{slug or 'task'}.html"
         prompt = (

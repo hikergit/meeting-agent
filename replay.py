@@ -57,7 +57,12 @@ async def main(interval: float) -> None:
     if not mock and not os.environ.get("GEMINI_API_KEY"):
         raise RuntimeError("GEMINI_API_KEY not set — or run with MOCK_PLANNING=true")
 
-    orchestrator = Orchestrator()
+    managed_ids = None
+    if os.getenv("EXECUTOR_BACKEND", "claude").lower() == "managed":
+        from planning.managed_agents import ensure_specialists
+        managed_ids = await ensure_specialists()
+
+    orchestrator = Orchestrator(managed_agent_ids=managed_ids)
     bus.subscribe("observation", orchestrator.handle_observation)
     register(orchestrator.state, reply_handler=orchestrator.handle_user_reply,
                  notes_handler=orchestrator.generate_notes)
