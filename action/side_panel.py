@@ -104,6 +104,16 @@ async def broadcast_heard(speaker: Optional[str], text: str) -> None:
     await _broadcast(json.dumps({"type": "heard", "speaker": speaker, "text": text}))
 
 
+async def broadcast_task_started(task_id: str, task: str) -> None:
+    await _broadcast(json.dumps({"type": "task_started", "id": task_id, "task": task}))
+
+
+async def broadcast_task_done(task_id: str, task: str, url: Optional[str], summary: str) -> None:
+    await _broadcast(json.dumps({
+        "type": "task_done", "id": task_id, "task": task, "url": url, "summary": summary,
+    }))
+
+
 async def broadcast_state(state: MeetingState) -> None:
     await _broadcast(json.dumps({"type": "state", "data": state.model_dump()}))
 

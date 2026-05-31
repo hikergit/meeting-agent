@@ -78,11 +78,10 @@ class Orchestrator:
         for decision in [*thinker_d, *questioner_d]:
             await self._emit(decision)
 
-        # 3. If an actionable request was heard, dispatch to Claude Code in background
+        # 3. If an actionable request was heard, dispatch to Claude Code in background.
+        #    Goes to the dedicated Tasks panel (with progress), NOT the scrolling chat.
         if action_task and self._should_dispatch(action_task):
             self._dispatched.append(action_task)
-            notice = Dispatcher.working_notice(action_task, obs.id)
-            await self._emit(notice)
             asyncio.create_task(self._run_executor(action_task, obs.id))
 
     async def handle_user_reply(self, agent_said: str, user_said: str) -> str:
@@ -105,12 +104,25 @@ class Orchestrator:
         return True
 
     async def _run_executor(self, task: str, obs_id: str) -> None:
+        import re
+        from action.side_panel import broadcast_task_started, broadcast_task_done
+        task_id = obs_id
+        # Announce immediately so the Tasks panel shows progress right away.
+        await broadcast_task_started(task_id, task)
         # Semaphore caps how many Claude Code dispatches run at once.
         async with self._exec_sem:
             self._active_tasks += 1
             try:
-                for decision in await self.executor.run(task, obs_id):
-                    await self._emit(decision)
+                decisions = await self.executor.run(task, obs_id)
+                # Pull the dashboard URL + summary out of the result for the Tasks panel.
+                url, summary = None, ""
+                for d in decisions:
+                    body = d.payload.body or ""
+                    m = re.search(r"/static/outputs/[^\s]+\.html", body)
+                    if m:
+                        url = m.group(0)
+                    summary = re.sub(r"📊[^\n]*", "", body).strip() or summary
+                await broadcast_task_done(task_id, task, url, summary)
             finally:
                 self._active_tasks -= 1
 

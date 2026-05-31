@@ -81,6 +81,16 @@
   .ev-item { font-size: 10.5px; color: var(--accent); background: rgba(99,102,241,.1); border-radius: 4px; padding: 3px 7px; margin-top: 4px; }
   .card-meta { font-size: 9.5px; color: var(--muted); margin-top: 6px; }
 
+  /* tasks & results */
+  .task { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+  .task.running { border-color: var(--medium); }
+  .task-head { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
+  .spin { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--medium); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .task-elapsed { margin-left: auto; font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .task-summary { font-size: 11px; color: #94a3b8; margin-top: 6px; line-height: 1.5; }
+  .task iframe { width: 100%; height: 360px; border: 1px solid var(--border); border-radius: 6px; margin-top: 8px; background: #fff; }
+  .task-open { font-size: 10.5px; color: var(--accent); text-decoration: none; }
   .section { margin-bottom: 14px; }
   .section h3 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 6px; }
   .pill { display: inline-block; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 2px 9px; font-size: 10.5px; margin: 2px; }
@@ -113,12 +123,16 @@
 
 <!-- BOTTOM: detail -->
 <div class="detail">
+  <div class="col" style="flex:1.5">
+    <div class="col-title">🚀 Tasks &amp; Results</div>
+    <div id="tasks"><p class="empty">No tasks yet. Ask the agent to research or build something.</p></div>
+  </div>
   <div class="col">
     <div class="col-title">Insights</div>
     <div id="decisions"><p class="empty">No insights yet.</p></div>
   </div>
-  <div class="col">
-    <div class="col-title">Meeting State</div>
+  <div class="col" style="flex:.8">
+    <div class="col-title">State</div>
     <div class="section"><h3>Participants</h3><div id="participants"><span class="empty">Waiting…</span></div></div>
     <div class="section"><h3>Screen</h3><div id="screen" class="screen-desc">No screen captured.</div></div>
     <div class="section"><h3>Facts</h3><div id="facts"><span class="empty">None yet.</span></div></div>
@@ -144,7 +158,38 @@ function connect() {
     else if (m.type === 'state')    renderState(m.data);
     else if (m.type === 'notes_pending') { notesBtn.disabled = true; notesBtn.textContent = '📝 Generating…'; }
     else if (m.type === 'notes')    renderNotes(m.data);
+    else if (m.type === 'task_started') taskStarted(m.id, m.task);
+    else if (m.type === 'task_done')    taskDone(m.id, m.task, m.url, m.summary);
   };
+}
+
+// ===== Tasks & Results (persistent panel, not the scrolling chat) =====
+const tasksEl = document.getElementById('tasks');
+const taskTimers = {};
+let firstTask = true;
+
+function taskStarted(id, task) {
+  if (firstTask) { tasksEl.innerHTML = ''; firstTask = false; }
+  const start = Date.now();
+  const el = document.createElement('div');
+  el.className = 'task running'; el.id = 'task-' + id;
+  el.innerHTML = `<div class="task-head"><div class="spin"></div><span>${escapeHtml(task)}</span><span class="task-elapsed" id="el-${id}">0s</span></div>
+                  <div class="task-summary">Working… dispatched to Claude Code.</div>`;
+  tasksEl.prepend(el);
+  taskTimers[id] = setInterval(() => {
+    const e = document.getElementById('el-' + id);
+    if (e) e.textContent = Math.round((Date.now() - start) / 1000) + 's';
+  }, 1000);
+}
+
+function taskDone(id, task, url, summary) {
+  if (taskTimers[id]) { clearInterval(taskTimers[id]); delete taskTimers[id]; }
+  let el = document.getElementById('task-' + id);
+  if (!el) { taskStarted(id, task); el = document.getElementById('task-' + id); }
+  el.className = 'task';
+  el.innerHTML = `<div class="task-head"><span>✅</span><span>${escapeHtml(task)}</span></div>
+    ${summary ? `<div class="task-summary">${escapeHtml(summary)}</div>` : ''}
+    ${url ? `<iframe src="${url}"></iframe><a class="task-open" href="${url}" target="_blank">open full ↗</a>` : ''}`;
 }
 
 const notesBtn = document.getElementById('notesBtn');
@@ -196,38 +241,19 @@ function setWaiting(on) {
 }
 
 // Promote agent reactions (questions / high-urgency / executor) into the conversation
+// Only genuine agent reactions reach the conversation. Executor results go to the
+// Tasks panel (task_started/task_done), not here — so they never flash away.
 function maybeAgentTurn(d) {
   const t = (d.payload.title || '').toLowerCase();
   const body = d.payload.body || '';
-  // Executor finished: embed the dashboard inline — no new tab.
-  const urlMatch = body.match(/\/static\/outputs\/[^\s]+\.html/);
-  if (t.startsWith('✅') && urlMatch) {
-    addDashboardTurn(d.payload.title, body.replace(/📊[^\n]*/,'').trim(), urlMatch[0]);
-    return;
-  }
   const isQuestion = t.startsWith('suggested question');
-  const isConversational = isQuestion || t.startsWith('🔧') || d.urgency === 'high';
+  const isConversational = isQuestion || d.urgency === 'high';
   if (isConversational) {
     const text = d.payload.title.replace(/^(suggested question)/i, 'Quick question').trim()
                + (body ? ` — ${body}` : '');
-    const flag = isQuestion ? 'needs' : (d.urgency === 'high' ? 'high' : '');
+    const flag = isQuestion ? 'needs' : 'high';
     addTurn('agent', '🤖', 'Agent', text, flag);
   }
-}
-
-function addDashboardTurn(title, summary, url) {
-  if (firstTurn) { thread.innerHTML = ''; firstTurn = false; }
-  const el = document.createElement('div');
-  el.className = 'turn agent';
-  el.style.maxWidth = '100%';
-  el.innerHTML = `<div class="who">🤖</div><div style="flex:1">
-      <div class="role">Agent · result</div>
-      <div class="bubble">${escapeHtml(title)}${summary ? `<br><span style="color:#94a3b8">${escapeHtml(summary)}</span>` : ''}
-        <iframe src="${url}" style="width:100%;height:340px;border:1px solid var(--border);border-radius:8px;margin-top:8px;background:#fff"></iframe>
-        <a href="${url}" target="_blank" style="font-size:10.5px;color:var(--accent)">open full ↗</a>
-      </div></div>`;
-  thread.appendChild(el);
-  thread.scrollTop = thread.scrollHeight;
 }
 
 function renderDecision(d) {
