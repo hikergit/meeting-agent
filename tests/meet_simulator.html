@@ -17,11 +17,10 @@
 <h2>Meet Caption Simulator</h2>
 <p>Simulates Google Meet's caption DOM for testing <code>caption_adapter.py</code></p>
 
-<button onclick="addLine('Alice Chen', 'Our Q1 growth was strong across all segments.')">Alice: Q1 growth</button>
-<button onclick="addLine('Bob Kim', 'We hit 30 percent quarter-over-quarter growth, exceeding our 15 percent target.')">Bob: 30% growth ⚡</button>
-<button onclick="addLine('Alice Chen', 'Engineering added 8 new hires in Q1, ahead of the plan.')">Alice: 8 hires</button>
-<button onclick="addLine('Bob Kim', 'The v3.0 engine should ship by end of May.')">Bob: v3.0 date</button>
-<button onclick="addLine('Alice Chen', 'Churn rate improved from 4.1 to 3.2 percent this quarter.')">Alice: churn</button>
+<button onclick="addLine('Speaker One', 'This is a caption adapter test line.')">Line 1</button>
+<button onclick="addLine('Speaker Two', 'Testing speaker attribution on the second line.')">Line 2</button>
+<button onclick="addLine('Speaker One', 'A third line to confirm dedup and ordering.')">Line 3</button>
+<button onclick="addLine('Speaker Two', 'Final test line for the caption pipeline.')">Line 4</button>
 <button onclick="clearCaptions()">Clear</button>
 
 <div id="captions"></div>

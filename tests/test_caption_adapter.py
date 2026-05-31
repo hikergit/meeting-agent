@@ -78,10 +78,10 @@ def inject_captions():
             additional_headers={"Origin": f"http://localhost:{CDP_PORT}"}
         ) as ws:
             lines = [
-                ("Alice Chen", "Our Q1 growth was strong across all segments."),
-                ("Bob Kim", "We hit 30 percent quarter-over-quarter growth, exceeding our 15 percent target."),
-                ("Alice Chen", "Engineering added 8 new hires in Q1."),
-                ("Bob Kim", "The v3.0 engine should ship by end of May."),
+                ("Speaker One", "This is a caption adapter test line one."),
+                ("Speaker Two", "Testing speaker attribution on the second line."),
+                ("Speaker One", "A third line to confirm dedup and ordering."),
+                ("Speaker Two", "Final test line for the caption pipeline."),
             ]
             for speaker, text in lines:
                 js = f"addLine({json.dumps(speaker)}, {json.dumps(text)})"

@@ -46,4 +46,9 @@ Set `PLANNING_BACKEND` in `.env`: `gemini` (default), `claude` (Anthropic key), 
 
 ## The demo
 
-`sample_stream.json` has a slide claiming **30% QoQ growth**. Mounted doc says **12%**. The agent catches it.
+Join a real meeting with captions on. The agent shows, in one panel:
+- **Conversation** — what it heard, the questions it needs you to answer, and your replies
+- **Tasks & Results** — say "research X and build a dashboard" and it dispatches Claude Code, with live progress and the result embedded
+- **📝 Notes** — three tiers: full transcript, detailed notes, and a glanceable human recap
+
+To cross-reference claims against your own docs, drop real `.md` files in `planning/agent_config/sample_docs/`.

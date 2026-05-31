@@ -13,7 +13,7 @@
   - System Settings → Privacy & Security → Screen Recording
 - [ ] macOS: grant **Screen Recording** to Chrome (same path)
 - [ ] `python replay.py` → open http://localhost:8765 → confirm side panel loads
-- [ ] Confirm the contradiction fires: obs-006/007 (30% QoQ) should trigger a Thinker alert citing `Q1_planning.md` (12%)
+- [ ] Join a meeting, turn captions ON, confirm the Conversation panel shows what's heard
 
 ---
 
@@ -42,17 +42,17 @@ Open http://localhost:8765. Watch the contradiction surface at obs-006/007.
 
 ---
 
-## The demo beat (10 seconds)
+## The demo beats
 
-Put a slide on screen that says **"30% QoQ growth"**.
+1. **It listens** — speak in the meeting; the Conversation panel shows what it heard.
+2. **It asks you** — when it needs a decision, a highlighted question appears ("needs you").
+3. **It acts** — say "research X and build a dashboard"; the Tasks panel shows live
+   progress, then embeds the result (no new tab).
+4. **It wraps up** — hit 📝 Notes for the glanceable human recap, with links to the
+   detailed notes and full transcript.
 
-The agent will quietly surface in the panel:
-
-> **Possible contradiction — Revenue Growth**
-> Slide claims 30% QoQ growth; your Q1 planning doc states 12%.
-> *Evidence: Q1_planning.md — "Q1 actual QoQ growth: 12%"*
-
-That's the whole story: vision → cross-reference → private surfacing.
+Optional cross-reference beat: drop a real doc in `planning/agent_config/sample_docs/`
+and the agent will flag claims on screen that contradict it.
 
 ---
 
