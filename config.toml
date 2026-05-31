@@ -1,0 +1,41 @@
+# Meeting Copilot — configuration
+#
+# Non-secret, tunable settings live here (version-controlled, the source of truth).
+# Secrets (API keys, account passwords) stay in .env and are never committed.
+# A shell environment variable still overrides any value here for one-off runs.
+
+[planning]
+backend = "gemini"        # reasoning backend: gemini | claude | claude-cli
+mock    = false           # true = rule-based stand-ins, no API calls
+
+[planning.questioner]
+cooldown_seconds = 120    # min seconds between questions — keep it rare and non-intrusive
+
+[planning.dispatcher]
+disable_doc_check = false # true = skip doc cross-check (when mounted docs are off-topic)
+
+[executor]
+# Who does dispatched in-meeting work (research, dashboards):
+#   "claude"  → local Claude Code subprocess (default, no extra setup)
+#   "managed" → Gemini Managed Agents (remote Linux sandboxes, web search)
+backend                  = "claude"
+max_concurrent           = 1
+timeout_seconds          = 300
+managed_timeout_seconds  = 600
+
+[perception.screen]
+enabled          = true
+source           = "cdp"  # cdp = screenshot the Meet tab (incl. shares) | display = full desktop
+interval_seconds = 10
+
+[perception.caption]
+self_name = "Alading Zoro" # your display name, so "You" captions are attributed correctly
+
+[perception.audio]
+enabled      = true       # backup transcription when captions are off (needs BlackHole)
+input_device = "BlackHole"
+chunk_seconds = 5
+
+[action]
+voice      = false        # speak agent reactions aloud (macOS `say`); off avoids meeting echo
+voice_name = "Samantha"

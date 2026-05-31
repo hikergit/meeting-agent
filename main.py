@@ -10,7 +10,9 @@ import os
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv()              # secrets from .env
+from config import load_config
+load_config()              # tunables from config.toml → env (before modules read them)
 
 from action.side_panel import broadcast_state, register, run_server
 from bus import bus

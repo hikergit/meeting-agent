@@ -19,6 +19,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
+from config import load_config
+load_config()
 
 from action.side_panel import broadcast_state, register, run_server
 from bus import bus

@@ -85,22 +85,25 @@ class Orchestrator:
             sp = obs.speaker.name if obs.speaker else None
             await broadcast_heard(sp, obs.content)
 
-        # 2. Run LLM-backed agents concurrently
-        thinker_d, questioner_d, action_req, _ = await asyncio.gather(
+        # 2. Action detection + dispatch runs INDEPENDENTLY in the background, so
+        #    asking the user a question never delays the agent doing real work.
+        if not MOCK:
+            asyncio.create_task(self._detect_and_dispatch(obs))
+
+        # 3. Insight agents (thinker = contradictions, questioner = asks you, learner = facts)
+        thinker_d, questioner_d, _ = await asyncio.gather(
             self.thinker.triage(obs),
             self.questioner.process(obs),
-            self.dispatcher.detect(obs) if not MOCK else _none(),
             self.learner.process(obs),
         )
-
         for decision in [*thinker_d, *questioner_d]:
             await self._emit(decision)
 
-        # 3. If an actionable request was heard, dispatch to the executor in background.
-        #    Goes to the dedicated Tasks panel (with progress), NOT the scrolling chat.
+    async def _detect_and_dispatch(self, obs: ObservationEvent) -> None:
+        action_req = await self.dispatcher.detect(obs)
         if action_req and self._should_dispatch(action_req.task):
             self._dispatched.append(action_req.task)
-            asyncio.create_task(self._run_executor(action_req, obs.id))
+            await self._run_executor(action_req, obs.id)
 
     async def handle_user_reply(self, agent_said: str, user_said: str) -> str:
         """User typed a reply in the panel → agent responds like a colleague."""
