@@ -54,10 +54,18 @@ async def _state_loop(orchestrator: Orchestrator) -> None:
 
 async def main(interval: float) -> None:
     mock = os.getenv("MOCK_PLANNING", "false").lower() == "true"
-    if not mock and not os.environ.get("GEMINI_API_KEY"):
-        raise RuntimeError("GEMINI_API_KEY not set — or run with MOCK_PLANNING=true")
+    backend = os.getenv("PLANNING_BACKEND", "auto").lower()
+    if not mock and not os.environ.get("GEMINI_API_KEY") and not os.environ.get("ANTHROPIC_API_KEY"):
+        raise RuntimeError("Set GEMINI_API_KEY or ANTHROPIC_API_KEY — or run with MOCK_PLANNING=true")
 
-    orchestrator = Orchestrator()
+    # Gemini backend: bootstrap managed agents (idempotent — safe to call every run)
+    managed_ids = None
+    if backend == "gemini" and not mock:
+        from planning.managed_agents import ensure_specialists
+        managed_ids = await ensure_specialists()
+        logger.info("Managed agents ready: %s", managed_ids)
+
+    orchestrator = Orchestrator(managed_agent_ids=managed_ids)
     bus.subscribe("observation", orchestrator.handle_observation)
     register(orchestrator.state)
 

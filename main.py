@@ -34,10 +34,18 @@ async def _state_loop(orchestrator: Orchestrator) -> None:
 
 async def main() -> None:
     mock = os.getenv("MOCK_PLANNING", "false").lower() == "true"
+    backend = os.getenv("PLANNING_BACKEND", "auto").lower()
     if not mock:
         log_backend()
 
-    orchestrator = Orchestrator()
+    # Gemini backend: bootstrap managed agents once at startup (idempotent)
+    managed_ids = None
+    if backend == "gemini" and not mock:
+        from planning.managed_agents import ensure_specialists
+        managed_ids = await ensure_specialists()
+        logger.info("Managed agents ready: %s", managed_ids)
+
+    orchestrator = Orchestrator(managed_agent_ids=managed_ids)
     bus.subscribe("observation", orchestrator.handle_observation)
     register(orchestrator.state)
 
