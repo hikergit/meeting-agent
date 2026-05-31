@@ -26,6 +26,9 @@ contradictions, questions, and dispatched tasks — without ever posting into th
           │  observation             │  decision               │
           └──────────────►  EVENT BUS (asyncio pub/sub)  ◄──────┘
                           + shared MEETING STATE
+
+       Gemini: 3.5-flash (vision + most agents) · 3.1-pro (Thinker)
+               Gemini Managed Agents (optional Executor backend)
 ```
 
 ## Tools we use
@@ -36,6 +39,18 @@ contradictions, questions, and dispatched tasks — without ever posting into th
 | **Planning**   | **Gemini** (`google-genai`) **or Claude** (`anthropic` SDK) · Executor → **Claude Code CLI** / **Gemini Managed Agents** |
 | **Action**     | **FastAPI** + **Uvicorn** + **WebSockets** |
 | **Glue**       | Python **asyncio** event bus · **Pydantic** (the two contracts) |
+
+### Which Gemini we use (`google-genai`)
+
+| Job | Model |
+|-----|-------|
+| Screen understanding (vision) | `gemini-3.5-flash` |
+| Thinker (deep reasoning / triage) | `gemini-3.1-pro-preview` |
+| Questioner · Researcher · Learner | `gemini-3.5-flash` |
+| Executor (optional remote backend) | **Gemini Managed Agents** |
+
+*Backends are swappable via `PLANNING_BACKEND` — the same agents also run on Claude
+(`anthropic` SDK) without code changes.*
 
 **In one line:** screen + captions come in → 6 Gemini/Claude agents reason over your
 own docs → it privately surfaces contradictions, questions, and dispatched tasks.
